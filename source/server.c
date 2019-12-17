@@ -40,11 +40,15 @@ int main(int argc, char ** argv){
     }
     socklen_t size ;
     int client_socket[100];
+    char  nicks[100][100];
+    int j = 0;
     for(int i = 0; i < clientsNum; i++){
         client_socket[i] = accept(server_socket, client_ptr[i], &size);
         char * addr = inet_ntoa ( client[i].sin_addr );
         int port = ntohs ( client[i].sin_port );
         printf ( "connected: %s %d \n " , addr , port );
+        read(client_socket[i], nicks[j], 100);
+        j++;
     }
     int receiver_2_sender[2];
     pipe ( receiver_2_sender );
@@ -66,10 +70,13 @@ int main(int argc, char ** argv){
         read ( receiver_2_sender [0] , &id , sizeof ( id ));
         read ( receiver_2_sender [0] , &size1 , sizeof ( size1 ));
         read ( receiver_2_sender [0] , buf , size1 );
-        printf("got from pipe client id %d, content %s\n", id, buf);
+        printf("got from pipe client %s id %d, content %s\n", nicks[id], id, buf);
         for ( int i = 0; i < clientsNum ; i ++) {
             printf("sending '%s' to client %d\n", buf, i);
+            write(client_socket[i], nicks[id], sizeof(nicks[id]));
+
             write(client_socket[i], buf, size1);
+
         }
     }
     printf("stopping main fan out\n");
