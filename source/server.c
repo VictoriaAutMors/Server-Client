@@ -1,3 +1,4 @@
+#include <string.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -5,8 +6,11 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <time.h>
+#include <semaphore.h>
 
-void reciever ( int id , int input , int output) {
+sem_t s;
+void reciever ( int id , int input , int output, ) {
     size_t size;
     char buf[100];
     while ( (size = read ( input , &buf, 100)) > 0){
@@ -55,7 +59,7 @@ int main(int argc, char ** argv){
     for ( int i = 0; i < clientsNum ; i++){
         if ( fork() == 0) {
             printf("client %d process started\n", i);
-            reciever (i,  client_socket[i], receiver_2_sender[1]);
+            reciever (i,  client_socket[i], receiver_2_sender[1], clientsNum);
             close ( client_socket [i]);
             return 0;
         }
@@ -67,14 +71,17 @@ int main(int argc, char ** argv){
 
     printf("starting main fan out\n");
     while (1) {
+    //    time_t my_time = time(NULL);
+    //    char * time_str = ctime(&my_time);
+    //    time_str[strlen(time_str) - 1] = '\0';
         read ( receiver_2_sender [0] , &id , sizeof ( id ));
         read ( receiver_2_sender [0] , &size1 , sizeof ( size1 ));
         read ( receiver_2_sender [0] , buf , size1 );
+        //printf("[%s]", time_str);
         printf("got from pipe client %s id %d, content %s\n", nicks[id], id, buf);
         for ( int i = 0; i < clientsNum ; i ++) {
             printf("sending '%s' to client %d\n", buf, i);
             write(client_socket[i], nicks[id], sizeof(nicks[id]));
-
             write(client_socket[i], buf, size1);
 
         }
