@@ -25,21 +25,28 @@ enum errors {
     DISCNT
 };
 
+/* initialize socket. Exit with ERR_SOCKET and error message on error */
 int socket_init(void);
 
+/* initialize server address */
 struct sockaddr_in server_addres_init(int port, char *ip);
 
+/* connect to the server. EXit with ERR_CONNECT and error message on error*/
 void connect_server(int client_socket, struct sockaddr_in addr);
 
+/* Sends message to the server. EXit with ERR_SEND and error message on error */
 int send_message(char *message, int client_socket, int key);
 
+/* Receive message from the server. EXit with ERR_RECV and error message on error */
 int recv_message(int client_socket, int key);
 
 /* function will kill child process if it's still working */
 void kill_child_proc(pid_t pid);
 
+/* Sends message to the socket. EXit with ERR_SEND and error message on error */
 void sendf(int client_socket, char *buffer, int len, int flag);
 
+/* checks argument number. Exit with ERR_INCORRECT_ARGS on wrong amount*/
 void arg_check(int argc);
 
 int main(int argc, char **argv) {
