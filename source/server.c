@@ -52,11 +52,11 @@ void arg_check(int argc);
 
 int main(int argc, char **argv) {
     arg_check(argc);
-    int server_socket, client_socket[10], pd[2], port,
+    int server_socket, client_socket[100], pd[2], port,
                     id = 0, sock_port = atoi(argv[1]), clients = atoi(argv[2]);
     ssize_t size1;
     socklen_t sock_size;
-    char nicknames[10][NAME_MAX], buf[LINE_MAX], *addr = NULL;
+    char nicknames[100][NAME_MAX], buf[LINE_MAX], *addr = NULL;
     struct sockaddr_in client[100];
     struct sockaddr *client_ptr[100];
     server_socket = server_init(sock_port, clients);
