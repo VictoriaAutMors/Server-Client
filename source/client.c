@@ -11,6 +11,8 @@
 
 #define PORT 8080
 
+int key = 8194;
+
 int main(){
 
 	int clientSocket, ret;
@@ -48,10 +50,12 @@ int main(){
             printf(">>");
             fgets(buffer, sizeof(buffer), stdin);
             buffer[strlen(buffer) - 1] = '\0';
-            send(clientSocket, buffer, strlen(buffer), 0);
-
-            //printf("Client: \t\n");
-            if(strcmp(buffer, ":exit") == 0){
+            char crypt[1000];
+            for(int i = 0; i < strlen(buffer); i++){
+                crypt[i] = (char)(((int)buffer[i])^key);
+            }
+            send(clientSocket, crypt, strlen(crypt), 0);        
+               if(strcmp(buffer, ":exit") == 0){
                 close(clientSocket);
                 printf("[-]Disconnected from server.\n");
                 exit(1);
@@ -65,11 +69,18 @@ int main(){
         ssize_t size, size1;
         size1 = recv(clientSocket, sender_nick, 100, 0);
         size = recv(clientSocket, buffer, 1000, 0);
-//        buffer[strlen(buffer) - 1] = '\0';
-//        time_t my_time = time(NULL);
-//        char * time_str = ctime(&my_time);
-//        time_str[strlen(time_str) - 1] = '\0';
-//        printf("[%s]", time_str);
+        char decrypt[1000];
+        int l = 0;
+        for(int i = 0; i < strlen(buffer); i++){
+                if(buffer[i] == ' '){
+                    decrypt[l] = buffer[i];
+                    l++;
+                }
+                else{
+                    decrypt[l] = (char)(((int)buffer[i])^key);
+                    l++; 
+                }
+        }
 		if(size < 0 || size1 < 0){
 			printf("[-]Error in receiving data.\n");
             break;
@@ -78,7 +89,7 @@ int main(){
             break;
         }else{
             buffer[size] = '\0';
-			printf("%s: %s\n", sender_nick, buffer);
+			printf("%s: %s\n", sender_nick, decrypt);
 		}
 	}
 

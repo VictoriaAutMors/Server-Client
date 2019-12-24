@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -9,17 +10,19 @@
 #include <time.h>
 #include <semaphore.h>
 
-sem_t s;
-void reciever ( int id , int input , int output, ) {
+sem_t semaphore;
+
+
+void reciever ( int id , int input , int output, int ClientsNum) {
     size_t size;
     char buf[100];
-    while ( (size = read ( input , &buf, 100)) > 0){
+    while((size = read ( input , &buf, 100)) > 0){
         printf("got %zu bytes from client socket %d, content %s\n", size, id, buf);
-        /* critical start */
+        sem_post(&semaphore);
         write ( output , & id , sizeof ( id ));
         write ( output , & size , sizeof ( size ));
         write ( output , buf , size );
-        /* critical stop */
+        sem_wait(&semaphore);
     }
 }
 
@@ -56,6 +59,7 @@ int main(int argc, char ** argv){
     }
     int receiver_2_sender[2];
     pipe ( receiver_2_sender );
+    sem_init(&semaphore, 1, 0);
     for ( int i = 0; i < clientsNum ; i++){
         if ( fork() == 0) {
             printf("client %d process started\n", i);
