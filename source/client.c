@@ -35,6 +35,7 @@ int send_message(char *message, int client_socket, int key);
 
 int recv_message(int client_socket, int key);
 
+/* function will kill child process if it's still working */
 void kill_child_proc(pid_t pid);
 
 void sendf(int client_socket, char *buffer, int len, int flag);
