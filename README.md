@@ -46,3 +46,4 @@ make clean
 ```
 It deletes all files in bin folder and bin folder
 
+# Additionaly python version of the chat in source folder
