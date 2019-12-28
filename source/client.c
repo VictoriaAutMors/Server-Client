@@ -15,6 +15,7 @@
 
 enum errors {
     OK,
+    CLIENT_EXIT,
     ERR_INCORRECT_ARGS,
     ERR_SOCKET,
     ERR_CONNECT,
@@ -51,27 +52,29 @@ void arg_check(int argc);
 
 int main(int argc, char **argv) {
     arg_check(argc);
-	int clientSocket, port = atoi(argv[2]), key = atoi(argv[3]);
-    char buffer[LINE_MAX], *ip = argv[1];
+	int status, client_socket, port = atoi(argv[2]), key = atoi(argv[3]);
+    char buffer[1000], *ip = argv[1];
     pid_t pid;
 	struct sockaddr_in serverAddr;
-	clientSocket = socket_init();
+	client_socket = socket_init();
     serverAddr = server_addres_init(port, ip);
-    connect_server(clientSocket, serverAddr);
+    connect_server(client_socket, serverAddr);
     if ((pid = fork()) == 0) {
-        while (1) {
-            if (send_message(buffer, clientSocket, key) == DISCNT) {
-                return OK;
+        while(1) {
+            if (send_message(buffer, client_socket, key) == DISCNT) {
+                close(client_socket);
+                puts("[-]Disconnected from server.");
+                exit(CLIENT_EXIT);
             }
         }
     }
-    while (1) {
-        if (recv_message(clientSocket, key) != OK) {
+    while(1) { 
+        if (recv_message(client_socket, key) != OK) {
             break;
         }
 	}
     kill_child_proc(pid);
-    close(clientSocket);
+    close(client_socket);
 	return 0;
 }
 
@@ -95,8 +98,8 @@ struct sockaddr_in server_addres_init(int port, char *ip) {
 
 void connect_server(int client_socket, struct sockaddr_in addr) {
     int tmp;
-    char nickname[NAME_MAX];
-    fputs("Please enter your nickname in this chat:", stdout);
+    char nickname[100];
+    fputs("Please enter your nickname in this chat: ", stdout);
     if (scanf("%s", nickname) == EOF) {
         if (ferror(stdin) == -1) {
             clearerr(stdin);
@@ -107,7 +110,7 @@ void connect_server(int client_socket, struct sockaddr_in addr) {
 	if (tmp < 0) {
 		err(ERR_CONNECT, "[-]Error in connection.");
 	}
-	puts("[+]Connected to Server.");
+	printf("[+]Connected to Server. Everyone see you as a %s\n", nickname);
     sendf(client_socket, nickname, strlen(nickname), 0);
 }
 
@@ -120,53 +123,42 @@ void sendf(int client_socket, char *buffer, int len, int flag) {
 int send_message(char *message, int client_socket, int key) {
     int len;
     time_t my_time = time(NULL);
-    char encrypted[LINE_MAX], *time_str = ctime(&my_time);
+    char encrypted[1000], *time_str = ctime(&my_time);
     time_str[strlen(time_str) - 1] = '\0';
-    printf("[%s]", time_str);
-    fputs(">>", stdout);
     if (fgets(message, sizeof(message), stdin) == NULL) {
         err(ERR_RECV, NULL);
     }
     len = strlen(message);
     message[len - 1] = '\0';
-    for (int i = 0; i < len; i++) {
-        encrypted[i] = (char)(((int)message[i])^key);
-    }
-    sendf(client_socket, encrypted, len, 0);        
-    if (strcmp(message, ":exit") == 0) {
-        close(client_socket);
-        puts("[-]Disconnected from server.");
+    if (strcmp(message, "/exit") == 0) {
         return DISCNT;
     }
+    printf("[%s] sended: %s\n", time_str, message);
+    /* for (int i = 0; i < len; i++) {
+        encrypted[i] = (char)(((int)message[i])^key);
+    } */
+    sendf(client_socket, message, len, 0);
     return OK;
 }
 
 int recv_message(int client_socket, int key) {
-    int len;
     ssize_t size_msg, size_nick;
     time_t my_time = time(NULL);
-    char nickname[NAME_MAX], decrypted[LINE_MAX], 
-                            message[LINE_MAX], *time_str = ctime(&my_time);
+    char nickname[100], decrypted[1000], 
+                            message[1000], *time_str = ctime(&my_time);
     time_str[strlen(time_str) - 1] = '\0';
-    size_nick = recv(client_socket, &nickname, NAME_MAX, 0);
-    size_msg = recv(client_socket, &message, LINE_MAX, 0);
-    len = strlen(message);
-    for (int i = 0, j = 0; i < len; i++, j++) {
-        if (message[i] == ' ') {
-            decrypted[j] = message[i];
-        } else {
-            decrypted[j] = (char)(((int)message[i])^key);
-        }
-    }
+    size_nick = recv(client_socket, &nickname, 100, 0);
+    size_msg = recv(client_socket, &message, 1000, 0);
+    /* for (int i = 0, j = 0; i < len; i++, j++) {
+        decrypted[j] = (char)(((int)message[i])^key);
+    } */
     if (size_msg < 0 || size_nick < 0) {
         err(ERR_RECV, "[-]Error in receiving data.");
     } else if (size_msg == 0) {
         printf("Server closed connection\n");
         return CLOSED_CONCT;
     } else {
-        message[size_msg] = '\0';
-        puts(nickname);
-        printf("[%s] %s\n", time_str, decrypted);
+        printf("[%s] received a message from %s: %s\n", time_str, nickname, message);
     }
     return OK;
 }

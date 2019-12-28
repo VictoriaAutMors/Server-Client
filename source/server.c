@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
                     id = 0, sock_port = atoi(argv[1]), clients = atoi(argv[2]);
     ssize_t size1;
     socklen_t sock_size;
-    char nicknames[100][NAME_MAX], buf[LINE_MAX], *addr = NULL;
+    char nicknames[100][100], buf[100], *addr = NULL;
     struct sockaddr_in client[100];
     struct sockaddr *client_ptr[100];
     server_socket = server_init(sock_port, clients);
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         addr = inet_ntoa(client[i].sin_addr);
         port = ntohs(client[i].sin_port);
         printf("connected: %s %d \n ", addr, port);
-        readf(client_socket[i], nicknames[j], NAME_MAX);
+        readf(client_socket[i], nicknames[j], 100);
     }
     if (pipe(pd) < 0) {
         err(ERR_PIPE, NULL);
@@ -83,7 +83,6 @@ int main(int argc, char **argv) {
             return OK;
         }
     }
-    wait(NULL);
     puts("starting chat");
     while (1) {
         readf(pd[0], &id, sizeof(id));
@@ -92,9 +91,11 @@ int main(int argc, char **argv) {
         printf("got from pipe client %s id %d, content %s\n", nicknames[id],
                                                                     id, buf);
         for (int i = 0; i < clients; i ++) {
-            printf("sending '%s' to client %d\n", buf, i);
-            writef(client_socket[i], nicknames[id], sizeof(nicknames[id]));
-            writef(client_socket[i], buf, size1);
+            if(i != id) {
+                printf("sending '%s' to client %d\n", buf, i);
+                writef(client_socket[i], nicknames[id], sizeof(nicknames[id]));
+                writef(client_socket[i], buf, size1);
+            }
         }
     }
     puts("stopping chat");
@@ -132,8 +133,8 @@ int server_init(int port, int clients) {
 
 void reciever(int id, int input, int output) {
     size_t sock_size;
-    char buf[LINE_MAX];
-    while((sock_size = read(input ,&buf, LINE_MAX)) > 0) {
+    char buf[100];
+    while((sock_size = read(input ,&buf, 100)) > 0) {
         printf("got %zu bytes from client socket %d, content %s\n", sock_size, id, buf);
         sem_post(&semaphore);
         writef(output ,&id ,sizeof(id));
