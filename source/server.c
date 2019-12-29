@@ -98,14 +98,13 @@ int main(int argc, char **argv) {
         readf(pd[0], message, size1);
         dec_msg = decrypt(message, val);
         printf("got from pipe client %s id %d, content %s\n", nicknames[id],
-                                                                    id, dec_msg);
-        enc_msg = encrypt(dec_msg, client_val[id], client_key[id]);
-        puts(enc_msg);
+                                                                    id, message);
         for (int i = 0; i < clients; i ++) {
             if(i != id) {
+                enc_msg = encrypt(dec_msg, client_val[id], client_key[id]);
                 printf("sending '%s' to client %d\n", message, i);
                 writef(client_socket[i], nicknames[id], sizeof(nicknames[id]));
-                writef(client_socket[i], enc_msg, strlen(enc_msg));
+                writef(client_socket[i], message, strlen(message));
             }
         }
         free(dec_msg);

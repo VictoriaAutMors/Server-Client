@@ -180,7 +180,7 @@ int recv_message(int client_socket) {
         return CLOSED_CONCT;
     } else {
         decrypted = decrypt(message, val);
-        printf("[%s] received a message from %s: %s\n", time_str, nickname, decrypted);
+        printf("[%s] received a message from %s: %s\n", time_str, nickname, message);
     }
     free(decrypted);
     return OK;
@@ -196,7 +196,6 @@ char *decrypt(char *message, int val) {
         }
         decrypted[i] = pow(message[i], private_key);
         decrypted[i] = fmod(decrypted[i], val);
-        printf("LL%d\n", val);
         i++;
     } while(decrypted[i - 1] != '\0');
     return decrypted;
