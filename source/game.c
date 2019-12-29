@@ -4,17 +4,13 @@
 #include <termios.h>
 #include <wait.h>
 
-#ifndef FIELD_H
-#define FIELD_H
-
 int ships[4];
+int my_ships = 10;
+int enemy_ships = 10;
 char field_for_me[10][10];
 
-
-void moved(int row, int col);
-void clickhandler();
-char slot = 'A';
 void Field_raise () {
+    char slot = 'A';
     if (fork() == 0){
         printf("  ");
         for (int i = 0; i < 10; i++) {
@@ -32,8 +28,6 @@ void Field_raise () {
     }
     wait(NULL);
 }
-
-#endif
 
 void clear_execute(){
     if(fork() == 0){
@@ -154,10 +148,50 @@ void put_ship(int deck, int x, int y, char * side){
     }
 }
 
-int enter_ship(){
+int check_ships (char * enemy_field, 
+                 char * enemy_field_for_enemy, 
+                 int x, int y) {
+
+    char up = enemy_field_for_enemy[x - 1][y];
+    char down = enemy_field_for_enemy[x - 1][y - 2];
+    char right = enemy_field_for_enemy[x][y - 1];
+    char left = enemy_field_for_enemy[x - 2][y - 1];
+
+    int ships_around = (up == '0' && left == '0' && down == '0' && right == '0');
+    if ( ships_around ||
+        ( enemy_field[x - 1][y] == 'x' && down == '0' && right == '0' && left == '0') || 
+        ( enemy_field[x][y - 1] == 'x' && down == '0' && up == '0' && left == '0')|| 
+        ( enemy_field[x - 1][y - 2] == 'x' && up == '0' && left == '0' && right == '0') || 
+        ( enemy_field[x - 2][y - 1] == 'x' && up == '0' && right == '0' && down == '0') ) {
+            enemy_ships--;
+    }
+
+}
+
+char **shot ( char **enemy_field, 
+              char **enemy_field_for_enemy) {
+    int x, y;
+    puts("Enter coordinates of the cell that you want to shoot.")
+    printf("coordinate x:");
+    scanf("%d", x);
+    printf("coordinate y:");
+    scanf("%d", y);
+    if (enemy_field_for_enemy[x - 1][y - 1] == '0') {
+        enemy_field[x - 1][y - 1] = '@';
+    }
+    else {
+        enemy_field[x - 1][y - 1] = 'x';
+        check_ships(enemy_field, enemy_field_for_enemy, x, y);
+    }
+    return enemy_field;
+}
+
+
+int enter_ship() {
     int deck, x;
     char y[1] = "A";
     char side[1];
+
     printf("Choose ship type:");
     scanf("%d", &deck) ;
     printf("%d", ships[deck - 1]);
@@ -195,15 +229,17 @@ int enter_ship(){
     return 0;
 }
 
-
 int main(int argc, char ** argv){
     //set_input_mode();
     print_greetings();
-    char field_for_enemy[10][10];
+    char field_for_enemy[10][10], enemy_field_for_enemy[10][10], enemy_field[10][10];
+    char slot = 'A';
+
     ships[0] = 4;
     ships[1] = 3;
     ships[2] = 2;
     ships[3] = 1;
+
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
             field_for_enemy[i][j] = '0';
@@ -218,11 +254,68 @@ int main(int argc, char ** argv){
         puts("x(0, 10)");
         puts("y(0, 10)");
         puts("Side({U,D,L,R})");
-        if (enter_ship()){
+        if ( enter_ship() ) {
+            break;
+        }
+        if (ships[0] == 0 && ships[1] == 0 && ships[2] == 0 && ships[3] == 0) {
             break;
         }
         clear_execute();
     }   
     clear_execute();
+
+    puts ("You enter ALL your ships.");
+    puts ("Get ready to start the game.");
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+            enemy_field_for_enemy[i][j] = '0';
+            enemy_field[i][j] = '0';
+        }
+    }
+
+    while (1) {
+        enemy_field = shot(field_for_enemy, enemy_field, enemy_field_for_enemy);
+        
+        puts("Your field");
+        printf("  ");
+        for (int i = 0; i < 10; i++) {
+            printf("%d", i + 1);
+        }
+        putchar('\n');
+        for (int i = 0; i < 10; i++) {
+            putchar(slot + i);
+            putchar(' ');
+            for (int j = 0; j < 10; j++) {
+                putchar(field_for_me[i][j]);
+            }
+            putchar('\n');
+        }
+
+        puts("Enemy field");
+        printf("  ");
+        for (int i = 0; i < 10; i++) {
+            printf("%d", i + 1);
+        }
+        putchar('\n');
+        for (int i = 0; i < 10; i++) {
+            putchar(slot + i);
+            putchar(' ');
+            for (int j = 0; j < 10; j++) {
+                putchar(enemy_field[i][j]);
+            }
+            putchar('\n');
+        }
+
+        if (enemy_ships == 0) {
+            puts("Greetings!You win!");
+            break;
+        }
+        if(my_ships == 0){
+            puts("You lose!");
+            break;
+        }
+        clear_execute();
+    }
+
     return 0;
 }
