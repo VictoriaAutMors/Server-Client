@@ -12,9 +12,13 @@
 #include <err.h>
 #include <sys/wait.h>
 #include <limits.h>
+#include <math.h>
 
 enum errors {
     OK,
+    PUBLIC,
+    PRIVATE,
+    ERR_REALLC,
     ERR_INCORRECT_ARGS,
     ERR_SOCKET,
     ERR_PIPE,
@@ -25,49 +29,53 @@ enum errors {
     ERR_LIST,
 };
 
+double private_key, public_key;
+
 sem_t semaphore;
 
-/* initialize socket. Exit with ERR_SOCKET and error message on error */
 int socket_init(int socket_option);
-
-/* initialize server */
 int server_init(int port, int clients);
-
-/* receives messages then writes them in pipe */
 void reciever(int id, int input, int output);
-
-/* additional functions */
-
-/* write message in fd. Exit with  ERR_WRITE and error message on error */
 void writef(ssize_t fd, void *message, int sock_size);
-
-/* read message from fd. Exit ERR_READ and error message on error */
 void readf(ssize_t fd, void *message, int sock_size);
-
-/* close pipes. Exit with ERR_CLOSE_PIPE and error message on error  */
 void close_pipe(int pd[2]);
-
-/* checks argument number. Exit with ERR_INCORRECT_ARGS on wrong amount*/
+int generate_key(int, int);
+char *encrypt(char *, char *, char *);
+char *decrypt(char *, int);
+int encryption_init();
+int is_prime(int);
+int gcd(int, int);
 void arg_check(int argc);
 
 int main(int argc, char **argv) {
     arg_check(argc);
-    int server_socket, client_socket[100], pd[2], port,
+    char client_val[100][100], client_key[100][100], vals[100], skey[100];
+    int server_socket, client_socket[100], pd[2], port, val,
                     id = 0, sock_port = atoi(argv[1]), clients = atoi(argv[2]);
     ssize_t size1;
     socklen_t sock_size;
-    char nicknames[100][100], buf[100], *addr = NULL;
+    char nicknames[100][100], message[1000], *dec_msg = NULL, *enc_msg = NULL, *addr = NULL;
     struct sockaddr_in client[100];
     struct sockaddr *client_ptr[100];
     server_socket = server_init(sock_port, clients);
+    val = encryption_init();
+    sprintf(vals, "%d", val);
+    if (gcvt(public_key, 100, skey) == NULL) {
+        err(ERR_INCORRECT_ARGS, NULL);
+    }
     for (int i = 0; i < clients; i++) {
         client_ptr[i] = (struct sockaddr *)&client[i];
     }
+    puts("wait for connect");
     for (int i = 0, j = 0; i < clients; i++, j++) {
         client_socket[i] = accept(server_socket, client_ptr[i], &sock_size);
         addr = inet_ntoa(client[i].sin_addr);
         port = ntohs(client[i].sin_port);
         printf("connected: %s %d \n ", addr, port);
+        writef(client_socket[i], vals, 100);
+        writef(client_socket[i], skey, 100);
+        readf(client_socket[i], client_val[i], 100);
+        readf(client_socket[i], client_key[i], 100);
         readf(client_socket[i], nicknames[j], 100);
     }
     if (pipe(pd) < 0) {
@@ -87,22 +95,28 @@ int main(int argc, char **argv) {
     while (1) {
         readf(pd[0], &id, sizeof(id));
         readf(pd[0], &size1, sizeof(size1));
-        readf(pd[0], buf, size1);
+        readf(pd[0], message, size1);
+        dec_msg = decrypt(message, val);
         printf("got from pipe client %s id %d, content %s\n", nicknames[id],
-                                                                    id, buf);
+                                                                    id, dec_msg);
+        enc_msg = encrypt(dec_msg, client_val[id], client_key[id]);
+        puts(enc_msg);
         for (int i = 0; i < clients; i ++) {
             if(i != id) {
-                printf("sending '%s' to client %d\n", buf, i);
+                printf("sending '%s' to client %d\n", message, i);
                 writef(client_socket[i], nicknames[id], sizeof(nicknames[id]));
-                writef(client_socket[i], buf, size1);
+                writef(client_socket[i], enc_msg, strlen(enc_msg));
             }
         }
+        free(dec_msg);
+        free(enc_msg);
     }
     puts("stopping chat");
     close_pipe(pd);
     return OK;
 }
 
+/* initialize socket. Exit with ERR_SOCKET and error message on error */
 int socket_init(int socket_option) {
     int server_socket;
     server_socket = socket(PF_INET, SOCK_STREAM, 0);
@@ -116,6 +130,85 @@ int socket_init(int socket_option) {
     return server_socket;
 }
 
+char *decrypt(char *message, int val) {
+    int i = 0;
+    char *decrypted = NULL;
+    do {
+        decrypted = (char *)realloc(decrypted, (i +1) * sizeof(char));
+        if (decrypted == NULL) {
+            err(ERR_REALLC, NULL);
+        }
+        decrypted[i] = pow(message[i], private_key);
+        decrypted[i] = fmod(decrypted[i], val);
+        i++;
+    } while(decrypted[i - 1] != '\0');
+    return decrypted;
+}
+
+char *encrypt(char *message, char *cval, char *ckey) {
+    int val = atoi(cval), key = atoi(ckey), i = 0;
+    char *encrypted = NULL;
+    do {
+        encrypted = (char *)realloc(encrypted, (i +1) * sizeof(char));
+        if (encrypted == NULL) {
+            err(ERR_REALLC, NULL);
+        }
+        if (message[i] != '\0') {
+            encrypted[i] = pow(message[i], key);
+            encrypted[i] = fmod(encrypted[i], val);
+        } else {
+            encrypted[i] = '\0';
+        }
+        i++;
+    } while(encrypted[i - 1] != '\0');
+    return encrypted;
+}
+
+/* initialize encyption. returns product of multiplication two prime numbers.
+It needs to encypt and decrypt messages */
+int encryption_init() {
+    int num1, num2, val;
+    double totient;
+    puts("Enter 2 prime numbers less than 100 to initialize server encyption");
+    if (scanf("%d %d", &num1, &num2) == EOF) {
+        err(ERR_READ, NULL);
+    }
+    if (is_prime(num1) || is_prime(num2)) {
+        puts("Wrong input, one of the number is not prime");
+        exit(ERR_INCORRECT_ARGS);
+    }
+    totient = (num1 - 1) * (num2 - 1);
+    val = num1 * num2;
+    public_key = generate_key(PUBLIC, totient);
+    private_key = generate_key(PRIVATE, totient);
+    return val;
+}
+
+int generate_key(int type, int totient) {
+    int count, val = 2; 
+    double key = 2;
+    if (type == PUBLIC) {
+        /* Choose key such that key > 1 and coprime to totient 
+        which means gcd (key, totient) must be equal to 1, 
+        key is the public key */
+        while(key < totient) {
+            count = gcd(key,totient);
+            if (count == 1) {
+                break;
+            } else {
+                key++;
+            }
+        }
+    } else {
+        /* Choose key such that it satisfies the equation:
+        key * public_key = 1 + k * (totient),
+        key is the private key not known to everyone. */
+        key = (1 + (val * totient)) / public_key;
+    }
+    return key;
+}
+
+/* initialize server */
 int server_init(int port, int clients) {
     int server_socket = socket_init(1);
     struct sockaddr_in server_addr;
@@ -131,31 +224,35 @@ int server_init(int port, int clients) {
     return server_socket;
 }
 
+/* receives messages then writes them in pipe */
 void reciever(int id, int input, int output) {
     size_t sock_size;
-    char buf[100];
-    while((sock_size = read(input ,&buf, 100)) > 0) {
-        printf("got %zu bytes from client socket %d, content %s\n", sock_size, id, buf);
+    char message[100];
+    while((sock_size = read(input ,&message, 100)) > 0) {
+        printf("got %zu bytes from client socket %d, content %s\n", sock_size, id, message);
         sem_post(&semaphore);
         writef(output ,&id ,sizeof(id));
         writef(output ,&sock_size ,sizeof(sock_size));
-        writef(output ,buf ,sock_size);
+        writef(output ,message ,sock_size);
         sem_wait(&semaphore);
     }
 }
 
+/* read message from fd. Exit ERR_READ and error message on error */
 void readf(ssize_t fd, void *message, int sock_size) {
     if (read(fd, message, sock_size) < 0) {
         err(ERR_READ, NULL);
     }
 }
 
+/* write message in fd. Exit with  ERR_WRITE and error message on error */
 void writef(ssize_t fd, void *message, int sock_size) {
     if (write(fd, message, sock_size) < 0) {
         err(ERR_WRITE, "Failed to write in socket");
     }
 }
 
+/* close pipes. Exit with ERR_CLOSE_PIPE and error message on error  */
 void close_pipe(int pd[2]) {
     if (close(pd[1]) < 0) {
         err(ERR_CLOSE_PIPE, NULL);
@@ -165,6 +262,34 @@ void close_pipe(int pd[2]) {
     }
 }
 
+/* functions checks number. if number is prime it returns 0. 
+Returns 1 in other case*/
+int is_prime(int num) {
+    if (num <= 1) {
+        return 0;
+    } 
+    if (num % 2 == 0 && num > 2) return 0;
+    for (int i = 3; i < num / 2; i+= 2) {
+        if (num % i == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* functions find greatest common divisor of a and b */
+int gcd(int a, int b) {
+    while (a != b) {
+        if (a > b) {
+            return gcd(a - b, b);
+        } else {
+            return gcd(a, b - a);
+        }
+    }
+    return a;
+}
+
+/* checks argument number. Exit with ERR_INCORRECT_ARGS on wrong amount*/
 void arg_check(int argc) {
     if (argc != 3) {
         puts("Incorrect args.");
