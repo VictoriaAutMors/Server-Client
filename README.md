@@ -3,7 +3,7 @@ Server-Client implementation in C language. An encrypted chat service for local 
 
 # Server-Client supports:
 
-1) XOR cipher encryption
+1) RSA cipher encryption
 2) shows time and nickname of the user
 3) send messages from one client to another
 4) up to 100 clients
