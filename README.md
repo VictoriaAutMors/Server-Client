@@ -32,11 +32,15 @@ run in terminal:
 In bin folder:
 run in terminal:
 ```
-./client <ip> <port> <key>
+./client <ip> <port>
 ```
-* ip - IP adress of the server.
+* ip - IP adress of the server.and 
 * port -  port of the server. 
-* key - it's key to encryption. All clients should have the same one to work properly
+
+# RSA Encryption 
+RSA (Rivest–Shamir–Adleman) is an algorithm used by modern computers to encrypt and decrypt messages. It is an asymmetric cryptographic algorithm. Asymmetric means that there are two different keys. This is also called public key cryptography, because one of the keys can be given to anyone. The other key must be kept private.
+
+* At start client and server ask for two prime numbers less than 100 to generate private and public keys. 
 
 # Clean: 
 
