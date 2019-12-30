@@ -49,18 +49,18 @@ void arg_check(int argc);
 
 int main(int argc, char **argv) {
     arg_check(argc);
-    char client_val[100][100], client_key[100][100], vals[100], skey[100];
-    int server_socket, client_socket[100], pd[2], port, val,
+    char client_val[100][LOGIN_MAX], client_key[100][LOGIN_MAX], vals[LOGIN_MAX], skey[LOGIN_MAX];
+    int server_socket, client_socket[LOGIN_MAX], pd[2], port, val,
                     id = 0, sock_port = atoi(argv[1]), clients = atoi(argv[2]);
     ssize_t size1;
     socklen_t sock_size;
-    char nicknames[100][100], message[1000], *dec_msg = NULL, *enc_msg = NULL, *addr = NULL;
+    char nicknames[100][NAME_MAX], message[LINE_MAX], *dec_msg = NULL, *enc_msg = NULL, *addr = NULL;
     struct sockaddr_in client[100];
     struct sockaddr *client_ptr[100];
     server_socket = server_init(sock_port, clients);
     val = encryption_init();
     sprintf(vals, "%d", val);
-    if (gcvt(public_key, 100, skey) == NULL) {
+    if (gcvt(public_key, LOGIN_MAX, skey) == NULL) {
         err(ERR_INCORRECT_ARGS, NULL);
     }
     for (int i = 0; i < clients; i++) {
@@ -72,11 +72,11 @@ int main(int argc, char **argv) {
         addr = inet_ntoa(client[i].sin_addr);
         port = ntohs(client[i].sin_port);
         printf("connected: %s %d \n ", addr, port);
-        writef(client_socket[i], vals, 100);
-        writef(client_socket[i], skey, 100);
-        readf(client_socket[i], client_val[i], 100);
-        readf(client_socket[i], client_key[i], 100);
-        readf(client_socket[i], nicknames[j], 100);
+        writef(client_socket[i], vals, LOGIN_MAX);
+        writef(client_socket[i], skey, LOGIN_MAX);
+        readf(client_socket[i], client_val[i], LOGIN_MAX);
+        readf(client_socket[i], client_key[i], LOGIN_MAX);
+        readf(client_socket[i], nicknames[j], NAME_MAX);
     }
     if (pipe(pd) < 0) {
         err(ERR_PIPE, NULL);
