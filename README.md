@@ -36,6 +36,9 @@ run in terminal:
 ```
 * ip - IP adress of the server.and 
 * port -  port of the server. 
+![alt text](https://github.com/VictoriaAutMors/Server-Client/tree/master/source/common/images/1.png "Server")
+![alt text](https://github.com/VictoriaAutMors/Server-Client/tree/master/source/common/images/2.png "Server")
+![alt text](https://github.com/VictoriaAutMors/Server-Client/tree/master/source/common/images/3.png "Server")
 
 # RSA Encryption 
 RSA (Rivest–Shamir–Adleman) is an algorithm used by modern computers to encrypt and decrypt messages. It is an asymmetric cryptographic algorithm. Asymmetric means that there are two different keys. This is also called public key cryptography, because one of the keys can be given to anyone. The other key must be kept private.
