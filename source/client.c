@@ -53,7 +53,7 @@ void arg_check(int argc);
 int main(int argc, char **argv) {
     arg_check(argc);
 	int client_socket, port = atoi(argv[2]);
-    char buffer[1000], *ip = argv[1];
+    char buffer[LINE_MAX], *ip = argv[1];
     pid_t pid;
 	struct sockaddr_in serverAddr;
 	client_socket = socket_init();
@@ -101,7 +101,7 @@ struct sockaddr_in server_addres_init(int port, char *ip) {
 /* connect to the server. EXit with ERR_CONNECT and error message on error*/
 void connect_server(int client_socket, struct sockaddr_in addr) {
     int tmp;
-    char nickname[100], skey[100], ser_val[100], ser_key[100], sval[100];
+    char nickname[NAME_MAX], skey[LOGIN_MAX], ser_val[LOGIN_MAX], ser_key[LOGIN_MAX], sval[LOGIN_MAX];
     fputs("Please enter your nickname in this chat: ", stdout);
     if (scanf("%s", nickname) == EOF) {
         if (ferror(stdin) == -1) {
@@ -115,14 +115,14 @@ void connect_server(int client_socket, struct sockaddr_in addr) {
 	}
 	printf("[+]Connected to Server. Everyone see you as a %s\n", nickname);
     val = encryption_init();
-    if (gcvt(public_key, 100, skey) == NULL) {
+    if (gcvt(public_key, LOGIN_MAX, skey) == NULL) {
         err(ERR_READ, NULL);
     }
     sprintf(sval, "%d", val);
-    readf(client_socket, ser_val, 100);
-    readf(client_socket, ser_key, 100);
-    sendf(client_socket, sval, 100, 0);
-    sendf(client_socket, skey, 100, 0);
+    readf(client_socket, ser_val, LOGIN_MAX);
+    readf(client_socket, ser_key, LOGIN_MAX);
+    sendf(client_socket, sval, LOGIN_MAX, 0);
+    sendf(client_socket, skey, LOGIN_MAX, 0);
     sendf(client_socket, nickname, strlen(nickname), 0);
     server_key = atoi(ser_val);
     server_val = atoi(ser_key);
@@ -168,11 +168,11 @@ int send_message(char *message, int client_socket) {
 int recv_message(int client_socket) {
     ssize_t size_msg, size_nick;
     time_t my_time = time(NULL);
-    char nickname[100], *decrypted = NULL,
-                            message[1000], *time_str = ctime(&my_time);
+    char nickname[NAME_MAX], *decrypted = NULL,
+                            message[LINE_MAX], *time_str = ctime(&my_time);
     time_str[strlen(time_str) - 1] = '\0';
-    size_nick = recv(client_socket, &nickname, 100, 0);
-    size_msg = recv(client_socket, &message, 1000, 0);
+    size_nick = recv(client_socket, &nickname, NAME_MAX, 0);
+    size_msg = recv(client_socket, &message, LINE_MAX, 0);
     if (size_msg < 0 || size_nick < 0) {
         err(ERR_RECV, "[-]Error in receiving data.");
     } else if (size_msg == 0) {
